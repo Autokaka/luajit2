@@ -24,6 +24,7 @@ function(luajit_build_host_tools)
         DASM_PPC_OPD
         DASM_PPC_OPDENV
         DASM_PPC_ELFV2
+        DASM_PAUTH
         TARGET_ARCH_AARCH64EB  # "" or "0" or "1"
         TARGET_ARCH_ENDIAN  # "" or "LUAJIT_LE" or "LUAJIT_BE"
         TARGET_ARCH_MIPSEL  # "" or "0" or "1"
@@ -31,6 +32,7 @@ function(luajit_build_host_tools)
         TARGET_ARCH_HASFPU  # "0" or "1"
         TARGET_ARCH_SOFTFP  # "0" or "1"
         TARGET_ARCH_NO_UNWIND  # "" or "0" or "1"
+        TARGET_ARCH_PAUTH  # "0" or "1"
         TARGET_LJARCH  # ".."
     )
     set(MULTI_VALUE_ARGS
@@ -131,19 +133,24 @@ function(luajit_build_host_tools)
     if(HOST_TOOL_TARGET_ARCH_NO_UNWIND AND HOST_TOOL_TARGET_ARCH_NO_UNWIND STREQUAL "1")
         list(APPEND TARGET_ARCH "-DLUAJIT_NO_UNWIND")
     endif()
+    if(HOST_TOOL_TARGET_ARCH_PAUTH STREQUAL "1")
+        list(APPEND TARGET_ARCH "-DLJ_ABI_PAUTH=1")
+    endif()
     list(APPEND TARGET_ARCH "-DLUAJIT_TARGET=LUAJIT_ARCH_${HOST_TOOL_TARGET_LJARCH}")
 
     message(STATUS "[BuildHostTools] TARGET_ARCH: ${TARGET_ARCH}")
 
     ##### Build minilua
 
-    add_executable(minilua ${HOST_TOOL_MINILUA_SOURCES})
+    add_executable(luajit.minilua ${HOST_TOOL_MINILUA_SOURCES})
+    add_executable(luajit::minilua ALIAS luajit.minilua)
+    set_target_properties(luajit.minilua PROPERTIES EXPORT_NAME minilua OUTPUT_NAME minilua)
 
     # check for libm
     check_library_exists(m pow "" HAS_LIBM)
     if(HAS_LIBM)
         message(STATUS "[BuildHostTools] minilua links to libm")
-        target_link_libraries(minilua m)
+        target_link_libraries(luajit.minilua m)
     endif()
 
     ##### Build buildvm
@@ -206,6 +213,9 @@ function(luajit_build_host_tools)
     if(HOST_TOOL_DASM_PPC_ELFV2)
         list(APPEND DASM_FLAGS "-D" "ELFV2")
     endif()
+    if(HOST_TOOL_DASM_PAUTH)
+        list(APPEND DASM_FLAGS "-D" "PAUTH")
+    endif()
 
     message(STATUS "[BuildHostTools] DASM_FLAGS: ${DASM_FLAGS}")
 
@@ -213,23 +223,25 @@ function(luajit_build_host_tools)
     add_custom_command(
         OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/buildvm_arch.h"
         COMMAND
-            "$<TARGET_FILE:minilua>"
+            "$<TARGET_FILE:luajit.minilua>"
             "${HOST_TOOL_DASM_SCRIPT}"
             ${DASM_FLAGS}
             -o "${CMAKE_CURRENT_BINARY_DIR}/buildvm_arch.h"
             "${HOST_TOOL_DASM_SOURCE}"
-        DEPENDS "$<TARGET_FILE:minilua>" "${HOST_TOOL_DASM_SCRIPT}" "${HOST_TOOL_DASM_SOURCE}"
+        DEPENDS "$<TARGET_FILE:luajit.minilua>" "${HOST_TOOL_DASM_SCRIPT}" "${HOST_TOOL_DASM_SOURCE}"
         VERBATIM)
 
     # buildvm
-    add_executable(buildvm ${HOST_TOOL_BUILDVM_SOURCES} "${CMAKE_CURRENT_BINARY_DIR}/buildvm_arch.h")
-    target_include_directories(buildvm PRIVATE ${CMAKE_CURRENT_BINARY_DIR} ${HOST_TOOL_BUILDVM_INCLUDES})
-    target_compile_definitions(buildvm PRIVATE ${TARGET_ARCH})
+    add_executable(luajit.buildvm ${HOST_TOOL_BUILDVM_SOURCES} "${CMAKE_CURRENT_BINARY_DIR}/buildvm_arch.h")
+    add_executable(luajit::buildvm ALIAS luajit.buildvm)
+    set_target_properties(luajit.buildvm PROPERTIES EXPORT_NAME buildvm OUTPUT_NAME buildvm)
+    target_include_directories(luajit.buildvm PRIVATE ${CMAKE_CURRENT_BINARY_DIR} ${HOST_TOOL_BUILDVM_INCLUDES})
+    target_compile_definitions(luajit.buildvm PRIVATE ${TARGET_ARCH})
     if(FORCE_TARGET_64BIT)
-        set_target_properties(buildvm PROPERTIES COMPILE_FLAGS "-m64" LINK_FLAGS "-m64")
+        set_target_properties(luajit.buildvm PROPERTIES COMPILE_FLAGS "-m64" LINK_FLAGS "-m64")
     elseif(FORCE_TARGET_32BIT)
-        set_target_properties(buildvm PROPERTIES COMPILE_FLAGS "-m32" LINK_FLAGS "-m32")
+        set_target_properties(luajit.buildvm PROPERTIES COMPILE_FLAGS "-m32" LINK_FLAGS "-m32")
     endif()
 
-    export(TARGETS minilua buildvm FILE "${CMAKE_BINARY_DIR}/LuaJITHostToolsConfig.cmake")
+    export(TARGETS luajit.minilua luajit.buildvm NAMESPACE luajit:: FILE "${CMAKE_BINARY_DIR}/LuaJITHostToolsConfig.cmake")
 endfunction()

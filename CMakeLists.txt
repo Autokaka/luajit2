@@ -41,7 +41,7 @@ option(LUAJIT_OPTION_USE_ASSERT "Turn on assertions for the whole LuaJIT VM" OFF
 set(MAJVER 2)
 set(MINVER 1)
 set(RELVER 0)
-set(PREREL "-beta3")
+set(PREREL "-4182d6b")
 set(VERSION ${MAJVER}.${MINVER}.${RELVER}${PREREL})
 
 set(ABIVER "5.1")
@@ -159,6 +159,7 @@ if(LUAJIT_HOST_BUILD_STAGE)
     option(LUAJIT_HOST_BUILD_OPTION_DASM_HASFPU "" 0)
     option(LUAJIT_HOST_BUILD_OPTION_DASM_SOFTFP "" 0)
     option(LUAJIT_HOST_BUILD_OPTION_DASM_NOUNWIND "" 0)
+    option(LUAJIT_HOST_BUILD_OPTION_DASM_PAUTH "" 0)
     option(LUAJIT_HOST_BUILD_OPTION_DASM_IOS "" 0)
     option(LUAJIT_HOST_BUILD_OPTION_DASM_MIPSR6 "" 0)
     option(LUAJIT_HOST_BUILD_OPTION_DASM_PPC_SQRT "" 0)
@@ -174,6 +175,7 @@ if(LUAJIT_HOST_BUILD_STAGE)
     set(LUAJIT_HOST_BUILD_OPTION_TARGET_ARCH_HASFPU "0" CACHE STRING "")
     set(LUAJIT_HOST_BUILD_OPTION_TARGET_ARCH_SOFTFP "0" CACHE STRING "")
     set(LUAJIT_HOST_BUILD_OPTION_TARGET_ARCH_NO_UNWIND "" CACHE STRING "")
+    set(LUAJIT_HOST_BUILD_OPTION_TARGET_ARCH_PAUTH "" CACHE STRING "")
     set(LUAJIT_HOST_BUILD_OPTION_TARGET_LJARCH "" CACHE STRING "")
 
     luajit_build_host_tools(
@@ -189,6 +191,7 @@ if(LUAJIT_HOST_BUILD_STAGE)
         DASM_HASFPU ${LUAJIT_HOST_BUILD_OPTION_DASM_HASFPU}
         DASM_SOFTFP ${LUAJIT_HOST_BUILD_OPTION_DASM_SOFTFP}
         DASM_NOUNWIND ${LUAJIT_HOST_BUILD_OPTION_DASM_NOUNWIND}
+        DASM_PAUTH ${LUAJIT_HOST_BUILD_OPTION_DASM_PAUTH}
         DASM_IOS ${LUAJIT_HOST_BUILD_OPTION_DASM_IOS}
         DASM_MIPSR6 ${LUAJIT_HOST_BUILD_OPTION_DASM_MIPSR6}
         DASM_PPC_SQRT ${LUAJIT_HOST_BUILD_OPTION_DASM_PPC_SQRT}
@@ -204,6 +207,7 @@ if(LUAJIT_HOST_BUILD_STAGE)
         TARGET_ARCH_HASFPU "${LUAJIT_HOST_BUILD_OPTION_TARGET_ARCH_HASFPU}"
         TARGET_ARCH_SOFTFP "${LUAJIT_HOST_BUILD_OPTION_TARGET_ARCH_SOFTFP}"
         TARGET_ARCH_NO_UNWIND "${LUAJIT_HOST_BUILD_OPTION_TARGET_ARCH_NO_UNWIND}"
+        TARGET_ARCH_PAUTH "${LUAJIT_HOST_BUILD_OPTION_TARGET_ARCH_PAUTH}"
         TARGET_LJARCH "${LUAJIT_HOST_BUILD_OPTION_TARGET_LJARCH}"
         MINILUA_SOURCES
             "${CMAKE_CURRENT_SOURCE_DIR}/src/host/minilua.c"
@@ -381,6 +385,12 @@ if(LJ_NO_UNWIND_1)
     set(TARGET_ARCH_NO_UNWIND 1)
 endif()
 
+test_target_arch_equals(LJ_ABI_PAUTH 1)
+if(LJ_ABI_PAUTH_1)
+    list(APPEND TARGET_ARCH "-DLJ_ABI_PAUTH=1")
+    set(TARGET_ARCH_PAUTH 1)
+endif()
+
 list(APPEND TARGET_ARCH "-DLUAJIT_TARGET=LUAJIT_ARCH_${TARGET_LJARCH}")
 
 # FIXME: handle -DLUA_ROOT, -DLUA_MULTILIB
@@ -496,6 +506,7 @@ set(DASM_DUALNUM 0)
 set(DASM_HASFPU 0)
 set(DASM_SOFTFP 0)
 set(DASM_NOUNWIND 0)
+set(DASM_PAUTH 0)
 set(DASM_IOS 0)
 set(DASM_MIPSR6 0)
 set(DASM_PPC_SQRT 0)
@@ -543,6 +554,11 @@ endif()
 test_target_arch_equals(LJ_NO_UNWIND 1)
 if(LJ_NO_UNWIND_1)
     set(DASM_NOUNWIND 1)
+endif()
+
+test_target_arch_equals(LJ_ABI_PAUTH 1)
+if(LJ_ABI_PAUTH_1)
+    set(DASM_PAUTH 1)
 endif()
 
 if(TARGET_LJARCH STREQUAL "x64")
@@ -749,6 +765,7 @@ if(CMAKE_CROSSCOMPILING)
             "-DLUAJIT_HOST_BUILD_OPTION_DASM_HASFPU=${DASM_HASFPU}"
             "-DLUAJIT_HOST_BUILD_OPTION_DASM_SOFTFP=${DASM_SOFTFP}"
             "-DLUAJIT_HOST_BUILD_OPTION_DASM_NOUNWIND=${DASM_NOUNWIND}"
+            "-DLUAJIT_HOST_BUILD_OPTION_DASM_PAUTH=${DASM_PAUTH}"
             "-DLUAJIT_HOST_BUILD_OPTION_DASM_IOS=${DASM_IOS}"
             "-DLUAJIT_HOST_BUILD_OPTION_DASM_MIPSR6=${DASM_MIPSR6}"
             "-DLUAJIT_HOST_BUILD_OPTION_DASM_PPC_SQRT=${DASM_PPC_SQRT}"
@@ -764,6 +781,7 @@ if(CMAKE_CROSSCOMPILING)
             "-DLUAJIT_HOST_BUILD_OPTION_TARGET_ARCH_HASFPU=${TARGET_ARCH_HASFPU}"
             "-DLUAJIT_HOST_BUILD_OPTION_TARGET_ARCH_SOFTFP=${TARGET_ARCH_SOFTFP}"
             "-DLUAJIT_HOST_BUILD_OPTION_TARGET_ARCH_NO_UNWIND=${TARGET_ARCH_NO_UNWIND}"
+            "-DLUAJIT_HOST_BUILD_OPTION_TARGET_ARCH_PAUTH=${TARGET_ARCH_PAUTH}"
             "-DLUAJIT_HOST_BUILD_OPTION_TARGET_LJARCH=${TARGET_LJARCH}"
             "${CMAKE_CURRENT_SOURCE_DIR}"
             WORKING_DIRECTORY "${LUAJIT_HOST_BUILD_WORKDIR}"
@@ -808,6 +826,7 @@ else()
         DASM_HASFPU ${DASM_HASFPU}
         DASM_SOFTFP ${DASM_SOFTFP}
         DASM_NOUNWIND ${DASM_NOUNWIND}
+        DASM_PAUTH ${DASM_PAUTH}
         DASM_IOS ${DASM_IOS}
         DASM_MIPSR6 ${DASM_MIPSR6}
         DASM_PPC_SQRT ${DASM_PPC_SQRT}
@@ -823,6 +842,7 @@ else()
         TARGET_ARCH_HASFPU "${TARGET_ARCH_HASFPU}"
         TARGET_ARCH_SOFTFP "${TARGET_ARCH_SOFTFP}"
         TARGET_ARCH_NO_UNWIND "${TARGET_ARCH_NO_UNWIND}"
+        TARGET_ARCH_PAUTH "${TARGET_ARCH_PAUTH}"
         TARGET_LJARCH "${TARGET_LJARCH}"
         MINILUA_SOURCES
             "${CMAKE_CURRENT_SOURCE_DIR}/src/host/minilua.c"
@@ -844,13 +864,13 @@ function(add_buildvm_target)
 
     add_custom_command(
         OUTPUT "${BUILDVM_TARGET_OUTPUT}"
-        COMMAND "$<TARGET_FILE:buildvm>"
+        COMMAND "$<TARGET_FILE:luajit::buildvm>"
         ARGS
             "-m" "${BUILDVM_TARGET_MODE}"
             "-o" "${BUILDVM_TARGET_OUTPUT}"
             ${BUILDVM_TARGET_SOURCES}
         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-        DEPENDS "$<TARGET_FILE:buildvm>" ${BUILDVM_TARGET_SOURCES}
+        DEPENDS "$<TARGET_FILE:luajit::buildvm>" ${BUILDVM_TARGET_SOURCES}
         VERBATIM)
     set_source_files_properties("${BUILDVM_TARGET_OUTPUT}" PROPERTIES GENERATED TRUE)
 endfunction()
@@ -873,29 +893,37 @@ set(BUILDVM_OUTPUTS
     "${CMAKE_CURRENT_BINARY_DIR}/lj_folddef.h")
 
 if(NOT ${BUILDMODE} STREQUAL "static")
-    add_library(liblua-shared SHARED ${LJVMCORE_C} ${BUILDVM_OUTPUTS})
-    target_link_libraries(liblua-shared ${TARGET_XLIBS})
-    target_include_directories(liblua-shared INTERFACE "${CMAKE_CURRENT_SOURCE_DIR}/src")
-    target_include_directories(liblua-shared PRIVATE "${CMAKE_CURRENT_BINARY_DIR}")
-    set_target_properties(liblua-shared PROPERTIES PREFIX "lib" IMPORT_PREFIX "lib" OUTPUT_NAME "lua")
+    add_library(luajit.liblua SHARED ${LJVMCORE_C} ${BUILDVM_OUTPUTS})
+    add_library(luajit::liblua ALIAS luajit.liblua)
+    set_target_properties(luajit.liblua PROPERTIES EXPORT_NAME liblua)
+    target_link_libraries(luajit.liblua ${TARGET_XLIBS})
+    target_include_directories(luajit.liblua INTERFACE "${CMAKE_CURRENT_SOURCE_DIR}/src")
+    target_include_directories(luajit.liblua PRIVATE "${CMAKE_CURRENT_BINARY_DIR}")
+    set_target_properties(luajit.liblua PROPERTIES PREFIX "lib" IMPORT_PREFIX "lib" OUTPUT_NAME "lua")
     if(TARGET_SYS STREQUAL "Windows" AND NOT CYGWIN)  # FIXME: CYGWIN detect?
-        target_compile_options(liblua-shared PRIVATE "-DLUA_BUILD_AS_DLL" ${TARGET_XCFLAGS})
+        target_compile_options(luajit.liblua PRIVATE "-DLUA_BUILD_AS_DLL" ${TARGET_XCFLAGS})
     else()
-        target_compile_options(liblua-shared PRIVATE ${TARGET_XCFLAGS})
+        target_compile_options(luajit.liblua PRIVATE ${TARGET_XCFLAGS})
     endif()
 
-    add_executable(lua "${CMAKE_CURRENT_SOURCE_DIR}/src/luajit.c")
-    target_link_libraries(lua liblua-shared)
+    add_executable(luajit.lua "${CMAKE_CURRENT_SOURCE_DIR}/src/luajit.c")
+    add_executable(luajit::lua ALIAS luajit.lua)
+    set_target_properties(luajit.lua PROPERTIES EXPORT_NAME lua OUTPUT_NAME lua)
+    target_link_libraries(luajit.lua luajit.liblua)
 endif()
 
 if(NOT ${BUILDMODE} STREQUAL "dynamic")
-    add_library(liblua-static STATIC ${LJVMCORE_C} ${BUILDVM_OUTPUTS})
-    target_link_libraries(liblua-static ${TARGET_XLIBS})
-    target_include_directories(liblua-static INTERFACE "${CMAKE_CURRENT_SOURCE_DIR}/src")
-    target_include_directories(liblua-static PRIVATE "${CMAKE_CURRENT_BINARY_DIR}")
-    set_target_properties(liblua-static PROPERTIES COMPILE_DEFINITIONS "liblua_static" OUTPUT_NAME "lua-static")
-    target_compile_options(liblua-static PRIVATE ${TARGET_XCFLAGS})
+    add_library(luajit.liblua-static STATIC ${LJVMCORE_C} ${BUILDVM_OUTPUTS})
+    add_library(luajit::liblua-static ALIAS luajit.liblua-static)
+    set_target_properties(luajit.liblua-static PROPERTIES EXPORT_NAME liblua-static)
+    target_link_libraries(luajit.liblua-static ${TARGET_XLIBS})
+    target_include_directories(luajit.liblua-static INTERFACE "${CMAKE_CURRENT_SOURCE_DIR}/src")
+    target_include_directories(luajit.liblua-static PRIVATE "${CMAKE_CURRENT_BINARY_DIR}")
+    set_target_properties(luajit.liblua-static PROPERTIES COMPILE_DEFINITIONS "liblua_static" OUTPUT_NAME "lua-static")
+    target_compile_options(luajit.liblua-static PRIVATE ${TARGET_XCFLAGS})
 
-    add_executable(lua-static "${CMAKE_CURRENT_SOURCE_DIR}/src/luajit.c")
-    target_link_libraries(lua-static liblua-static)
+    add_executable(luajit.lua-static "${CMAKE_CURRENT_SOURCE_DIR}/src/luajit.c")
+    add_executable(luajit::lua-static ALIAS luajit.lua-static)
+    set_target_properties(luajit.lua-static PROPERTIES EXPORT_NAME lua-static OUTPUT_NAME lua-static)
+    target_link_libraries(luajit.lua-static luajit.liblua-static)
 endif()
